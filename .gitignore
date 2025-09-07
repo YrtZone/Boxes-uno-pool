@@ -1,0 +1,13 @@
+# Unity - arquivos grandes que não precisam
+Library/
+Temp/
+Logs/
+UserSettings/
+*.cache
+*.tmp
+
+# Build
+Builds/
+Build/
+
+

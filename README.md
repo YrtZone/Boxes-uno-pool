@@ -1,1 +1,1 @@
-# Boxes-uno-pool
+# Boxes uno pool game
