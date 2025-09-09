@@ -11,3 +11,5 @@ Builds/
 Build/
 
 
+.vs/
+*.vsidx
