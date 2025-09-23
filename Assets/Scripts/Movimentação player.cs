@@ -5,46 +5,56 @@ public class MoveSimples : MonoBehaviour
 {
     public float speed = 3f;
     public float runSpeed = 6f;
-
     private Animator anim;
-
+    private string currentState = "";
     void Start()
     {
         anim = GetComponent<Animator>();
     }
-
     void Update()
     {
-        float x = Input.GetAxis("Horizontal");
-        float y = Input.GetAxis("Vertical");
+        float x = Input.GetAxisRaw("Horizontal");
+        float y = Input.GetAxisRaw("Vertical");
+        // Mover o jogador
+        transform.Translate(x * speed * Time.deltaTime, y * speed * Time.deltaTime, 0);
+        // Mostrar no console o que está acontecendo
+        Debug.Log("X: " + x + " Y: " + y);
+        // Decidir qual animação tocar
+        string newState = "";
 
-        bool isRunning = Input.GetKey(KeyCode.LeftShift);
-        float currentSpeed = isRunning ? runSpeed : speed;
-
-        transform.Translate(x * currentSpeed * Time.deltaTime, y * currentSpeed * Time.deltaTime, 0);
-
-        // Só 3 estados: Parado, Andando ou Correndo
         if (x == 0 && y == 0)
         {
-            anim.SetTrigger("Parado");
+            newState = "Parado";
         }
-        else if (isRunning)
+        else if (y < 0)
         {
-            anim.SetTrigger("Correndo");
+            newState = "CostaRun";
         }
-        else
+        else if (y > 0)
         {
-            anim.SetTrigger("Andando");
+            newState = "FrenteRun";
+        }
+        else if (x > 0)
+        {
+            newState = "Idle rigth";
+        }
+        else if (x < 0)
+        {
+            newState = "Idle left";
         }
 
-        // Vira sprite quando anda para trás (costa para tela)
-        if (y < 0)
+        // Só chama o trigger se mudou de estado
+        if (newState != currentState)
         {
-            GetComponent<SpriteRenderer>().flipY = true;
-        }
-        else
-        {
-            GetComponent<SpriteRenderer>().flipY = false;
+            // Limpa o trigger anterior para evitar acúmulo
+            if (!string.IsNullOrEmpty(currentState))
+            {
+                anim.ResetTrigger(currentState);
+            }
+
+            Debug.Log("Chamando: " + newState);
+            anim.SetTrigger(newState);
+            currentState = newState;
         }
     }
 }
