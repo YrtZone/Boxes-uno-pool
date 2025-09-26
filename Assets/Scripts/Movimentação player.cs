@@ -4,7 +4,7 @@ using UnityEngine;
 public class MoveSimples : MonoBehaviour
 {
     public float speed = 3f;
-    public float runSpeed = 6f;
+    public float runSpeed = 3f;
     private Animator anim;
     private string currentState = "";
     void Start()
@@ -17,8 +17,7 @@ public class MoveSimples : MonoBehaviour
         float y = Input.GetAxisRaw("Vertical");
         // Mover o jogador
         transform.Translate(x * speed * Time.deltaTime, y * speed * Time.deltaTime, 0);
-        // Mostrar no console o que está acontecendo
-        Debug.Log("X: " + x + " Y: " + y);
+
         // Decidir qual animação tocar
         string newState = "";
 
