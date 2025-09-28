@@ -4,42 +4,65 @@ using UnityEngine;
 using UnityEngine.SceneManagement;
 using System.Collections;
 
-public class PortaCompleta : MonoBehaviour
+public class PortaFacil : MonoBehaviour
 {
-    [Header("Configurações")]
+    [Header("Configurações da Porta")]
     public string nomeDaCenaDestino = "InteriorDaCasa";
-    public float tempoAnimacao = 1.5f; // Tempo para ver a animação completa
+    public Vector3 posicaoSpawn = new Vector3(0, 0, 0); // Onde o player vai aparecer
+    public float tempoAnimacao = 1.5f;
 
     private Animator anim;
     private bool jogadorPerto = false;
-    private bool processandoPorta = false; // Evita spam de E
+    private bool processando = false;
+
+    // Variável estática para guardar onde spawnar
+    public static Vector3 proximaPosicao;
+    public static bool temSpawnDefinido = false;
 
     void Start()
     {
         anim = GetComponent<Animator>();
+
+        // Se tem spawn definido, posicionar o player
+        if (temSpawnDefinido)
+        {
+            GameObject player = GameObject.FindGameObjectWithTag("Player");
+            if (player != null)
+            {
+                player.transform.position = proximaPosicao;
+                Debug.Log("Player posicionado em: " + proximaPosicao);
+            }
+            temSpawnDefinido = false; // Reset
+        }
     }
 
     void Update()
     {
-        if (jogadorPerto && Input.GetKeyDown(KeyCode.E) && !processandoPorta)
+        if (jogadorPerto && Input.GetKeyDown(KeyCode.E) && !processando)
         {
-            StartCoroutine(AnimacaoCompletaEMudarCena());
+            StartCoroutine(UsarPorta());
         }
     }
 
-    IEnumerator AnimacaoCompletaEMudarCena()
+    IEnumerator UsarPorta()
     {
-        processandoPorta = true;
+        processando = true;
 
-        Debug.Log("Porta abrindo... aguarde!");
+        // Definir onde o player vai aparecer na próxima cena
+        proximaPosicao = posicaoSpawn;
+        temSpawnDefinido = true;
 
-        // Inicia a animação
-        anim.SetTrigger("AtivarPorta");
+        Debug.Log("Usando porta...");
 
-        // Tempo suficiente para ver a animação completa
+        // Animação (se existir)
+        if (anim != null)
+        {
+            anim.Play("PortaAbrindo");
+        }
+
         yield return new WaitForSeconds(tempoAnimacao);
 
-        Debug.Log("Entrando na casa!");
+        // Carregar cena
         SceneManager.LoadScene(nomeDaCenaDestino);
     }
 
@@ -48,7 +71,7 @@ public class PortaCompleta : MonoBehaviour
         if (other.CompareTag("Player"))
         {
             jogadorPerto = true;
-            Debug.Log("Aperte E para entrar na casa");
+            Debug.Log("Aperte E para usar a porta");
         }
     }
 
@@ -57,7 +80,7 @@ public class PortaCompleta : MonoBehaviour
         if (other.CompareTag("Player"))
         {
             jogadorPerto = false;
-            processandoPorta = false; // Reset se sair da área
+            processando = false;
         }
     }
 }
