@@ -15,8 +15,17 @@ public class MoveSimples : MonoBehaviour
     {
         float x = Input.GetAxisRaw("Horizontal");
         float y = Input.GetAxisRaw("Vertical");
+
+        // ADICIONE ESTAS LINHAS AQUI:
+        anim.SetFloat("Horizontal", x);
+        anim.SetFloat("Vertical", y);
+        anim.SetFloat("Speed", Mathf.Abs(x) + Mathf.Abs(y));
+
         // Mover o jogador
         transform.Translate(x * speed * Time.deltaTime, y * speed * Time.deltaTime, 0);
+
+        // O resto do seu código continua igual...
+        Debug.Log("X: " + x + " Y: " + y);
 
         // Decidir qual animação tocar
         string newState = "";
@@ -25,35 +34,5 @@ public class MoveSimples : MonoBehaviour
         {
             newState = "Parado";
         }
-        else if (y < 0)
-        {
-            newState = "CostaRun";
-        }
-        else if (y > 0)
-        {
-            newState = "FrenteRun";
-        }
-        else if (x > 0)
-        {
-            newState = "Idle rigth";
-        }
-        else if (x < 0)
-        {
-            newState = "Idle left";
-        }
-
-        // Só chama o trigger se mudou de estado
-        if (newState != currentState)
-        {
-            // Limpa o trigger anterior para evitar acúmulo
-            if (!string.IsNullOrEmpty(currentState))
-            {
-                anim.ResetTrigger(currentState);
-            }
-
-            Debug.Log("Chamando: " + newState);
-            anim.SetTrigger(newState);
-            currentState = newState;
-        }
     }
-}
+    }
