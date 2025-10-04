@@ -60,6 +60,7 @@
   <ItemGroup>
     <Compile Include="Assets\Scripts\GalinhaInimiga.cs" />
     <Compile Include="Assets\Scripts\PortaFacil.cs" />
+    <Compile Include="Assets\Scripts\ItemPickup.cs" />
     <Compile Include="Assets\Scripts\Movimentação player.cs" />
     <Compile Include="Assets\Scripts\CameraSeguePlayer.cs" />
   </ItemGroup>

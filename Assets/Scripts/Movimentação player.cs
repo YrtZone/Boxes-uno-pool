@@ -2,294 +2,312 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
+using UnityEngine.Events;
 
+// =====================================================
+// PLAYER CONTROLLER UNIFICADO (MOVIMENTO + VIDA + ITENS + OVOS)
+// =====================================================
+[RequireComponent(typeof(SpriteRenderer))]
+[RequireComponent(typeof(Rigidbody2D))]
+[RequireComponent(typeof(Animator))]
 public class PlayerController : MonoBehaviour
 {
-    [Header("Configurações de Movimento")]
-    public float speed = 3f;
-    public float runSpeed = 5f;
+    #region Singleton
+    public static PlayerController Instance { get; private set; }
+    #endregion
 
-    [Header("Configurações de Vida")]
-    public float vidaMaxima = 100f;
-    public float vidaAtual;
+    #region Configurações de Movimento
+    [Header("⚙️ Movimento")]
+    [SerializeField] private float baseSpeed = 3f;
+    [SerializeField] private float runMultiplier = 1.67f;
+    [SerializeField] private float acceleration = 10f;
+    [SerializeField] private float deceleration = 10f;
+    #endregion
 
-    [Header("UI da Vida")]
-    public Slider barraVida;
-    public Text textoVida;
+    #region Vida
+    [Header("❤️ Vida")]
+    [SerializeField] private float vidaMaxima = 100f;
+    private float vidaAtual;
+    private bool invulneravel = false;
+    [SerializeField] private float tempoInvulneravel = 1f;
+    #endregion
 
-    [Header("Efeitos Visuais")]
-    public float tempoEfeitoDano = 0.2f;
+    #region UI
+    [Header("📊 Interface")]
+    [SerializeField] private Slider barraVida;
+    [SerializeField] private Text textoVida;
+    [SerializeField] private GameObject painelGameOver;
+    #endregion
 
-    // Componentes
+    #region Sistema de Itens / Ovos
+    [Header("🥚 Sistema de Itens e Ovos")]
+    [SerializeField] private float distanciaMaximaPegar = 2f;
+    [SerializeField] private Transform pontoPegada;
+    [SerializeField] private float forcaSoltar = 5f;
+    [SerializeField] private KeyCode teclaPegarSoltar = KeyCode.X;
+    [SerializeField] private LayerMask layerItens;
+    [SerializeField] private bool mostrarRaioAlcance = true;
+    [SerializeField] private Color corRaioAlcance = Color.green;
+
+    private ItemPickup itemAtual = null;
+    private bool estaCarregandoItem = false;
+    private float velocidadeModificador = 1f;
+    #endregion
+
+    #region Componentes Internos
+    private Rigidbody2D rb;
     private Animator anim;
     private SpriteRenderer spriteRenderer;
-    private Rigidbody2D rb;
+    private AudioSource audioSource;
+    private Vector2 inputMovimento;
+    private Vector2 velocidadeAtual;
+    private bool estaCorrendo;
+    // << CORREÇÃO 1: Transformando em propriedade pública com setter privado
+    public bool EstaVivo { get; private set; } = true;
+    #endregion
 
-    // Estado do player
-    private bool estaCorrendo = false;
-    private bool estaVivo = true;
-    private string currentState = "";
+    #region Unity Events
+    public UnityEvent<float> OnVidaMudou;
+    public UnityEvent OnPlayerMorreu;
+    public UnityEvent OnPlayerReviveu;
+    #endregion
 
-    void Start()
+    #region Inicialização
+    private void Awake()
     {
-        // Inicializar componentes
+        if (Instance != null && Instance != this)
+        {
+            Destroy(gameObject);
+            return;
+        }
+        Instance = this;
+
+        rb = GetComponent<Rigidbody2D>();
         anim = GetComponent<Animator>();
         spriteRenderer = GetComponent<SpriteRenderer>();
-        rb = GetComponent<Rigidbody2D>();
+        audioSource = GetComponent<AudioSource>() ?? gameObject.AddComponent<AudioSource>();
+    }
 
-        // Configurar vida
+    private void Start()
+    {
         vidaAtual = vidaMaxima;
         AtualizarUIVida();
 
-        // Configurar física se tiver Rigidbody2D
-        if (rb != null)
+        if (pontoPegada == null)
         {
-            rb.freezeRotation = true;
-        }
-
-        // Verificar se tem a tag correta
-        if (!gameObject.CompareTag("Player"))
-        {
-            gameObject.tag = "Player";
-            Debug.Log("Tag 'Player' foi adicionada automaticamente!");
+            GameObject p = new GameObject("PontoPegada");
+            p.transform.SetParent(transform);
+            p.transform.localPosition = new Vector3(0.5f, 0.5f, 0f);
+            pontoPegada = p.transform;
         }
     }
+    #endregion
 
-    void Update()
+    #region Loop Principal
+    private void Update()
     {
-        if (!estaVivo)
-            return;
+        // << CORREÇÃO 2: Usando a nova propriedade
+        if (!EstaVivo) return;
 
-        MovimentarPlayer();
+        LerInput();
+        ProcessarInputMovimento();
+        ProcessarInputItem();
+
+        AtualizarAnimacoes();
+        AtualizarUIVida();
     }
 
-    void MovimentarPlayer()
+    private void FixedUpdate()
     {
-        // Pegar input do jogador
-        float x = Input.GetAxisRaw("Horizontal");
-        float y = Input.GetAxisRaw("Vertical");
+        // << CORREÇÃO 3: Usando a nova propriedade
+        if (!EstaVivo) return;
+        MoverPlayer();
+    }
+    #endregion
 
-        // Verificar se está correndo
-        estaCorrendo = Input.GetKey(KeyCode.LeftShift) || Input.GetKey(KeyCode.RightShift);
+    #region Movimento
+    private void LerInput()
+    {
+        inputMovimento.x = Input.GetAxisRaw("Horizontal");
+        inputMovimento.y = Input.GetAxisRaw("Vertical");
+        inputMovimento.Normalize();
+        estaCorrendo = Input.GetKey(KeyCode.LeftShift);
+    }
 
-        // Calcular velocidade atual
-        float velocidadeAtual = estaCorrendo ? runSpeed : speed;
+    private void ProcessarInputMovimento()
+    {
+        float velocidadeAlvo = baseSpeed * (estaCorrendo ? runMultiplier : 1f) * velocidadeModificador;
+        Vector2 velocidadeDesejada = inputMovimento * velocidadeAlvo;
+        float suavizar = inputMovimento.magnitude > 0.01f ? acceleration : deceleration;
+        velocidadeAtual = Vector2.Lerp(velocidadeAtual, velocidadeDesejada, suavizar * Time.deltaTime);
+    }
 
-        // Configurar parâmetros do Animator
-        if (anim != null)
+    private void MoverPlayer()
+    {
+        rb.MovePosition(rb.position + velocidadeAtual * Time.fixedDeltaTime);
+    }
+
+    private void AtualizarAnimacoes()
+    {
+        if (!anim) return;
+        anim.SetFloat("Horizontal", inputMovimento.x);
+        anim.SetFloat("Vertical", inputMovimento.y);
+        anim.SetFloat("Speed", velocidadeAtual.magnitude);
+        anim.SetBool("CarregandoItem", estaCarregandoItem);
+        anim.SetBool("EstaCorrendo", estaCorrendo);
+    }
+    #endregion
+
+    #region Sistema de Itens e Ovos
+    private void ProcessarInputItem()
+    {
+        if (Input.GetKeyDown(teclaPegarSoltar))
         {
-            anim.SetFloat("Horizontal", x);
-            anim.SetFloat("Vertical", y);
-            anim.SetFloat("Speed", Mathf.Abs(x) + Mathf.Abs(y));
-            anim.SetBool("EstaCorrendo", estaCorrendo);
+            if (estaCarregandoItem)
+                SoltarItem();
+            else
+                TentarPegarItem();
         }
 
-        // Mover o player
-        transform.Translate(x * velocidadeAtual * Time.deltaTime, y * velocidadeAtual * Time.deltaTime, 0);
+        if (estaCarregandoItem && itemAtual != null)
+            itemAtual.transform.position = pontoPegada.position;
+    }
 
-        // Zerar velocity do Rigidbody se estiver usando
-        if (rb != null)
-            rb.velocity = Vector2.zero;
+    private void TentarPegarItem()
+    {
+        Collider2D[] colliders = Physics2D.OverlapCircleAll(transform.position, distanciaMaximaPegar, layerItens);
+        float menorDistancia = float.MaxValue;
+        ItemPickup itemMaisProximo = null;
 
-        // Debug do movimento
-        if (x != 0 || y != 0)
+        foreach (var col in colliders)
         {
-            Debug.Log("Player movendo - X: " + x + " Y: " + y + " Correndo: " + estaCorrendo);
+            if (col.CompareTag("Item"))
+            {
+                float dist = Vector2.Distance(transform.position, col.transform.position);
+                if (dist < menorDistancia)
+                {
+                    menorDistancia = dist;
+                    itemMaisProximo = col.GetComponent<ItemPickup>();
+                }
+            }
         }
 
-        // Decidir qual animação tocar
-        string newState = "";
-        if (x == 0 && y == 0)
-        {
-            newState = "Parado";
-        }
-        else if (estaCorrendo)
-        {
-            newState = "Correndo";
-        }
+        if (itemMaisProximo != null)
+            PegarItem(itemMaisProximo);
         else
-        {
-            newState = "Andando";
-        }
-
-        // Trocar estado se necessário
-        if (newState != currentState)
-        {
-            currentState = newState;
-            Debug.Log("Estado do player: " + currentState);
-        }
+            Debug.Log("Nenhum item próximo para pegar!");
     }
 
+    private void PegarItem(ItemPickup item)
+    {
+        if (item == null) return;
+
+        itemAtual = item;
+        estaCarregandoItem = true;
+        velocidadeModificador = item.GetModificadorVelocidade();
+
+        item.SerPego(pontoPegada);
+        Debug.Log($"Item '{item.name}' foi pego!");
+    }
+
+    private void SoltarItem()
+    {
+        Vector2 direcao = (inputMovimento.magnitude > 0.01f ? inputMovimento : Vector2.right).normalized;
+
+        if (itemAtual != null)
+        {
+            // << CORREÇÃO FINAL: Nome do método com 'S' maiúsculo
+            itemAtual.Soltar();
+        }
+
+
+        // ✅ SOLUÇÃO: Cache do Rigidbody2D em variável
+        Rigidbody2D rb = itemAtual.GetComponent<Rigidbody2D>();
+        if (rb != null)
+        {
+            rb.AddForce(direcao * forcaSoltar, ForceMode2D.Impulse);
+        }
+
+        Debug.Log($"Item '{itemAtual.name}' foi solto!");
+
+        itemAtual = null;
+        estaCarregandoItem = false;
+        velocidadeModificador = 1f;
+    }
+    #endregion
+
+    #region Vida
     public void ReceberDano(float dano)
     {
-        if (!estaVivo)
-            return;
+        // << CORREÇÃO 4: Usando a nova propriedade
+        if (!EstaVivo || invulneravel) return;
 
-        vidaAtual -= dano;
-        vidaAtual = Mathf.Clamp(vidaAtual, 0, vidaMaxima);
-
-        Debug.Log("Player recebeu " + dano + " de dano! Vida atual: " + vidaAtual);
-
-        // Efeito visual de dano
-        StartCoroutine(EfeitoDano());
-
-        // Atualizar UI
+        vidaAtual = Mathf.Max(0, vidaAtual - dano);
         AtualizarUIVida();
 
-        // Verificar se morreu
         if (vidaAtual <= 0)
-        {
             Morrer();
-        }
+        else
+            StartCoroutine(PeriodoInvulneravel());
     }
 
-    public void Curar(float quantidadeCura)
+    public void Curar(float quantia)
     {
-        if (!estaVivo)
-            return;
-
-        vidaAtual += quantidadeCura;
-        vidaAtual = Mathf.Clamp(vidaAtual, 0, vidaMaxima);
-
-        Debug.Log("Player curou " + quantidadeCura + " pontos! Vida atual: " + vidaAtual);
-
-        // Efeito visual de cura (opcional)
-        StartCoroutine(EfeitoCura());
-
-        // Atualizar UI
+        // << CORREÇÃO 5: Usando a nova propriedade
+        if (!EstaVivo) return;
+        vidaAtual = Mathf.Min(vidaMaxima, vidaAtual + quantia);
         AtualizarUIVida();
     }
 
-    void Morrer()
+    private IEnumerator PeriodoInvulneravel()
     {
-        estaVivo = false;
-
-        Debug.Log("Player morreu!");
-
-        // Parar movimento
-        if (rb != null)
-            rb.velocity = Vector2.zero;
-
-        // Configurar animator
-        if (anim != null)
-        {
-            anim.SetFloat("Horizontal", 0);
-            anim.SetFloat("Vertical", 0);
-            anim.SetFloat("Speed", 0);
-            anim.SetBool("EstaMorto", true);
-        }
-
-        // Aqui você pode adicionar:
-        // - Tela de game over
-        // - Reiniciar fase
-        // - Voltar ao menu
-
-        // Exemplo: reiniciar a cena após 3 segundos
-        Invoke(nameof(ReiniciarJogo), 3f);
+        invulneravel = true;
+        yield return new WaitForSeconds(tempoInvulneravel);
+        invulneravel = false;
     }
 
-    void ReiniciarJogo()
+    private void Morrer()
     {
-        // Reiniciar a cena atual
-        UnityEngine.SceneManagement.SceneManager.LoadScene(
-            UnityEngine.SceneManagement.SceneManager.GetActiveScene().name);
+        // << CORREÇÃO 6: Usando a nova propriedade
+        EstaVivo = false;
+        velocidadeAtual = Vector2.zero;
+        anim.SetTrigger("Morrer");
+        painelGameOver?.SetActive(true);
+        OnPlayerMorreu?.Invoke();
     }
 
     public void Reviver()
     {
-        estaVivo = true;
+        // << CORREÇÃO 7: Usando a nova propriedade
+        EstaVivo = true;
         vidaAtual = vidaMaxima;
-
-        if (anim != null)
-        {
-            anim.SetBool("EstaMorto", false);
-        }
-
-        AtualizarUIVida();
-
-        Debug.Log("Player reviveu!");
+        painelGameOver?.SetActive(false);
+        anim.SetTrigger("Reviver");
+        OnPlayerReviveu?.Invoke();
     }
 
-    void AtualizarUIVida()
+    private void AtualizarUIVida()
     {
-        // Atualizar barra de vida
         if (barraVida != null)
-        {
             barraVida.value = vidaAtual / vidaMaxima;
-        }
-
-        // Atualizar texto da vida
         if (textoVida != null)
+            textoVida.text = $"{vidaAtual:F0}/{vidaMaxima:F0}";
+    }
+    #endregion
+
+    #region Gizmos
+    private void OnDrawGizmosSelected()
+    {
+        if (mostrarRaioAlcance)
         {
-            textoVida.text = vidaAtual.ToString("F0") + "/" + vidaMaxima.ToString("F0");
+            Gizmos.color = corRaioAlcance;
+            Gizmos.DrawWireSphere(transform.position, distanciaMaximaPegar);
+        }
+        if (pontoPegada != null)
+        {
+            Gizmos.color = Color.yellow;
+            Gizmos.DrawWireSphere(pontoPegada.position, 0.2f);
         }
     }
-
-    System.Collections.IEnumerator EfeitoDano()
-    {
-        // Piscar vermelho quando recebe dano
-        if (spriteRenderer != null)
-        {
-            Color corOriginal = spriteRenderer.color;
-            spriteRenderer.color = Color.red;
-            yield return new WaitForSeconds(tempoEfeitoDano);
-            spriteRenderer.color = corOriginal;
-        }
-    }
-
-    System.Collections.IEnumerator EfeitoCura()
-    {
-        // Piscar verde quando cura
-        if (spriteRenderer != null)
-        {
-            Color corOriginal = spriteRenderer.color;
-            spriteRenderer.color = Color.green;
-            yield return new WaitForSeconds(tempoEfeitoDano);
-            spriteRenderer.color = corOriginal;
-        }
-    }
-
-    // Métodos públicos para outros scripts verificarem
-    public bool EstaVivo()
-    {
-        return estaVivo;
-    }
-
-    public float GetVidaAtual()
-    {
-        return vidaAtual;
-    }
-
-    public float GetVidaMaxima()
-    {
-        return vidaMaxima;
-    }
-
-    public bool EstaCorrendo()
-    {
-        return estaCorrendo;
-    }
-
-    // Para debug - mostrar informações na tela
-    void OnGUI()
-    {
-        if (!estaVivo)
-        {
-            GUI.Label(new Rect(10, 10, 200, 20), "PLAYER MORREU!");
-        }
-
-        GUI.Label(new Rect(10, 30, 200, 20), "Vida: " + vidaAtual.ToString("F0") + "/" + vidaMaxima.ToString("F0"));
-        GUI.Label(new Rect(10, 50, 200, 20), "Estado: " + currentState);
-
-        // Botões de teste (remova em produção)
-        if (GUI.Button(new Rect(10, 70, 100, 30), "Receber Dano"))
-        {
-            ReceberDano(10);
-        }
-
-        if (GUI.Button(new Rect(120, 70, 80, 30), "Curar"))
-        {
-            Curar(20);
-        }
-    }
+    #endregion
 }
