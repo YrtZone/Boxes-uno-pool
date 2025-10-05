@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
 using UnityEngine.Events;
+using UnityEngine.SceneManagement;
 
 // =====================================================
 // PLAYER CONTROLLER UNIFICADO (MOVIMENTO + VIDA + ITENS + OVOS)
@@ -45,6 +46,7 @@ public class PlayerController : MonoBehaviour
     [SerializeField] private Transform pontoPegada;
     [SerializeField] private float forcaSoltar = 5f;
     [SerializeField] private KeyCode teclaPegarSoltar = KeyCode.X;
+    [SerializeField] private string tagDosItens = "Item";
     [SerializeField] private LayerMask layerItens;
     [SerializeField] private bool mostrarRaioAlcance = true;
     [SerializeField] private Color corRaioAlcance = Color.green;
@@ -62,7 +64,6 @@ public class PlayerController : MonoBehaviour
     private Vector2 inputMovimento;
     private Vector2 velocidadeAtual;
     private bool estaCorrendo;
-    // << CORREÇÃO 1: Transformando em propriedade pública com setter privado
     public bool EstaVivo { get; private set; } = true;
     #endregion
 
@@ -75,12 +76,16 @@ public class PlayerController : MonoBehaviour
     #region Inicialização
     private void Awake()
     {
-        if (Instance != null && Instance != this)
+        if (Instance == null)
+        {
+            Instance = this;
+            DontDestroyOnLoad(gameObject);
+        }
+        else if (Instance != this)
         {
             Destroy(gameObject);
             return;
         }
-        Instance = this;
 
         rb = GetComponent<Rigidbody2D>();
         anim = GetComponent<Animator>();
@@ -106,20 +111,16 @@ public class PlayerController : MonoBehaviour
     #region Loop Principal
     private void Update()
     {
-        // << CORREÇÃO 2: Usando a nova propriedade
         if (!EstaVivo) return;
 
         LerInput();
         ProcessarInputMovimento();
         ProcessarInputItem();
-
         AtualizarAnimacoes();
-        AtualizarUIVida();
     }
 
     private void FixedUpdate()
     {
-        // << CORREÇÃO 3: Usando a nova propriedade
         if (!EstaVivo) return;
         MoverPlayer();
     }
@@ -168,9 +169,6 @@ public class PlayerController : MonoBehaviour
             else
                 TentarPegarItem();
         }
-
-        if (estaCarregandoItem && itemAtual != null)
-            itemAtual.transform.position = pontoPegada.position;
     }
 
     private void TentarPegarItem()
@@ -181,7 +179,7 @@ public class PlayerController : MonoBehaviour
 
         foreach (var col in colliders)
         {
-            if (col.CompareTag("Item"))
+            if (col.CompareTag(tagDosItens))
             {
                 float dist = Vector2.Distance(transform.position, col.transform.position);
                 if (dist < menorDistancia)
@@ -194,8 +192,6 @@ public class PlayerController : MonoBehaviour
 
         if (itemMaisProximo != null)
             PegarItem(itemMaisProximo);
-        else
-            Debug.Log("Nenhum item próximo para pegar!");
     }
 
     private void PegarItem(ItemPickup item)
@@ -207,29 +203,40 @@ public class PlayerController : MonoBehaviour
         velocidadeModificador = item.GetModificadorVelocidade();
 
         item.SerPego(pontoPegada);
-        Debug.Log($"Item '{item.name}' foi pego!");
+
+        DontDestroyOnLoad(item.gameObject);
     }
 
     private void SoltarItem()
     {
+        if (itemAtual == null) return;
+
+        // 1. PRIMEIRO, SEMPRE soltamos o item do jogador.
+        // Isso executa transform.SetParent(null) e o item se torna um objeto raiz.
+        itemAtual.Soltar();
+
+        // 2. SEGUNDO, decidimos o que fazer com o item agora que ele é um objeto raiz.
+        if (!string.IsNullOrEmpty(itemAtual.uniqueId) && GameStateManager.Instance != null)
+        {
+            // Se o item for "especial" (tem ID), apenas atualizamos seu estado no gerenciador.
+            GameStateManager.Instance.UpdateItemScene(itemAtual.uniqueId, SceneManager.GetActiveScene().name);
+        }
+        else
+        {
+            // Se o item for "comum" (sem ID), nós o movemos para a cena atual.
+            // Isso remove sua persistência (o DontDestroyOnLoad) e previne o erro.
+            SceneManager.MoveGameObjectToScene(itemAtual.gameObject, SceneManager.GetActiveScene());
+        }
+
+        // 3. TERCEIRO, aplicamos a força de arremesso.
         Vector2 direcao = (inputMovimento.magnitude > 0.01f ? inputMovimento : Vector2.right).normalized;
-
-        if (itemAtual != null)
+        Rigidbody2D rbItem = itemAtual.GetComponent<Rigidbody2D>();
+        if (rbItem != null)
         {
-            // << CORREÇÃO FINAL: Nome do método com 'S' maiúsculo
-            itemAtual.Soltar();
+            rbItem.AddForce(direcao * forcaSoltar, ForceMode2D.Impulse);
         }
 
-
-        // ✅ SOLUÇÃO: Cache do Rigidbody2D em variável
-        Rigidbody2D rb = itemAtual.GetComponent<Rigidbody2D>();
-        if (rb != null)
-        {
-            rb.AddForce(direcao * forcaSoltar, ForceMode2D.Impulse);
-        }
-
-        Debug.Log($"Item '{itemAtual.name}' foi solto!");
-
+        // 4. QUARTO, limpamos as variáveis de estado do jogador.
         itemAtual = null;
         estaCarregandoItem = false;
         velocidadeModificador = 1f;
@@ -239,11 +246,11 @@ public class PlayerController : MonoBehaviour
     #region Vida
     public void ReceberDano(float dano)
     {
-        // << CORREÇÃO 4: Usando a nova propriedade
         if (!EstaVivo || invulneravel) return;
 
         vidaAtual = Mathf.Max(0, vidaAtual - dano);
         AtualizarUIVida();
+        OnVidaMudou?.Invoke(vidaAtual / vidaMaxima);
 
         if (vidaAtual <= 0)
             Morrer();
@@ -253,10 +260,10 @@ public class PlayerController : MonoBehaviour
 
     public void Curar(float quantia)
     {
-        // << CORREÇÃO 5: Usando a nova propriedade
         if (!EstaVivo) return;
         vidaAtual = Mathf.Min(vidaMaxima, vidaAtual + quantia);
         AtualizarUIVida();
+        OnVidaMudou?.Invoke(vidaAtual / vidaMaxima);
     }
 
     private IEnumerator PeriodoInvulneravel()
@@ -268,7 +275,6 @@ public class PlayerController : MonoBehaviour
 
     private void Morrer()
     {
-        // << CORREÇÃO 6: Usando a nova propriedade
         EstaVivo = false;
         velocidadeAtual = Vector2.zero;
         anim.SetTrigger("Morrer");
@@ -278,12 +284,12 @@ public class PlayerController : MonoBehaviour
 
     public void Reviver()
     {
-        // << CORREÇÃO 7: Usando a nova propriedade
         EstaVivo = true;
         vidaAtual = vidaMaxima;
         painelGameOver?.SetActive(false);
         anim.SetTrigger("Reviver");
         OnPlayerReviveu?.Invoke();
+        AtualizarUIVida();
     }
 
     private void AtualizarUIVida()

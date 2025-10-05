@@ -5,53 +5,53 @@ using UnityEngine;
 public class CameraSeguePlayer : MonoBehaviour
 {
     [Header("Seguir Player")]
-    public Transform player; // ⭐ ARRASTE SEU PLAYER AQUI! ⭐
+    [Tooltip("Referência ao transform do jogador. Será preenchido automaticamente ao iniciar a cena.")]
+    public Transform player;
     public float velocidadeCamera = 5f;
 
     void Start()
     {
-        // Se não colocou o player, tenta encontrar automaticamente
-        if (player == null)
+        // A forma mais robusta de encontrar o player persistente é usando o Singleton.
+        // Isso garante que a câmera sempre encontrará o player correto, mesmo após mudar de cena.
+        if (PlayerController.Instance != null)
         {
-            GameObject playerObj = GameObject.FindGameObjectWithTag("Player");
-            if (playerObj != null)
-            {
-                player = playerObj.transform;
-                Debug.Log("✅ Player encontrado!");
-            }
-            else
-            {
-                Debug.LogError("❌ PLAYER NÃO ENCONTRADO! Arraste o Player na caixinha!");
-            }
+            player = PlayerController.Instance.transform;
+            Debug.Log("✅ Câmera conectada ao Player persistente!");
+        }
+        else
+        {
+            // Se, por algum motivo, a câmera iniciar antes do player, este erro aparecerá.
+            Debug.LogError("❌ Câmera não encontrou a instância do PlayerController! Verifique se o Player existe na sua cena inicial.");
         }
     }
 
-    void Update()
+    // O método FixedUpdate é geralmente melhor para câmeras que seguem objetos de física (Rigidbody)
+    // para evitar "tremidas".
+    void FixedUpdate()
     {
+        // Se não tem player, não faz nada
+        if (player == null)
+        {
+            return;
+        }
+
         SeguirPlayer();
     }
 
     void SeguirPlayer()
     {
-        // Se não tem player, não faz nada
-        if (player == null)
-        {
-            Debug.Log("⚠️ Player não conectado!");
-            return;
-        }
-
         // Onde a câmera quer ir (seguir o player)
         Vector3 posicaoDesejada = new Vector3(
             player.position.x,  // X do player
             player.position.y,  // Y do player
-            -10                 // Z sempre -10 (câmera longe)
+            transform.position.z // Mantém o Z original da câmera (geralmente -10)
         );
 
         // Mover suavemente para lá
         transform.position = Vector3.Lerp(
             transform.position,
             posicaoDesejada,
-            velocidadeCamera * Time.deltaTime
+            velocidadeCamera * Time.fixedDeltaTime // Use fixedDeltaTime por estar no FixedUpdate
         );
     }
 }

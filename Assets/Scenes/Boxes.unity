@@ -327,10 +327,11 @@ MonoBehaviour:
   barraVida: {fileID: 0}
   textoVida: {fileID: 0}
   painelGameOver: {fileID: 0}
-  distanciaMaximaPegar: 2
-  pontoPegada: {fileID: 0}
+  distanciaMaximaPegar: 0.8
+  pontoPegada: {fileID: 784156851}
   forcaSoltar: 5
   teclaPegarSoltar: 120
+  tagDosItens: Item
   layerItens:
     serializedVersion: 2
     m_Bits: 8
@@ -374,7 +375,7 @@ Transform:
   m_GameObject: {fileID: 350826733}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: -4.19, y: -1.94, z: 0}
+  m_LocalPosition: {x: 10.04, y: 0.4, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -421,7 +422,7 @@ SpriteRenderer:
   m_SortingLayerID: 0
   m_SortingLayer: 0
   m_SortingOrder: 5
-  m_Sprite: {fileID: 1203211206, guid: 33d362ce8ab3366409b60d920870ed2f, type: 3}
+  m_Sprite: {fileID: -1794344846, guid: 33d362ce8ab3366409b60d920870ed2f, type: 3}
   m_Color: {r: 1, g: 1, b: 1, a: 1}
   m_FlipX: 0
   m_FlipY: 0
@@ -458,7 +459,7 @@ Rigidbody2D:
   m_Interpolate: 0
   m_SleepingMode: 1
   m_CollisionDetection: 0
-  m_Constraints: 2
+  m_Constraints: 3
 --- !u!58 &350826738
 CircleCollider2D:
   m_ObjectHideFlags: 0
@@ -506,7 +507,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 1fc5c0b4bad9a6b44b56c0e9827e53c8, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  modificadorVelocidade: 3
+  modificadorVelocidade: 0.8
+  uniqueId: 
 --- !u!1 &540093729
 GameObject:
   m_ObjectHideFlags: 0
@@ -1215,13 +1217,13 @@ Transform:
   m_GameObject: {fileID: 784156850}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: -0.07, y: -0.59, z: 0}
+  m_LocalPosition: {x: -0.03, y: 0.38, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 43838597}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!1 &877122239
+--- !u!1 &1038781011
 GameObject:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -1229,88 +1231,29 @@ GameObject:
   m_PrefabAsset: {fileID: 0}
   serializedVersion: 6
   m_Component:
-  - component: {fileID: 877122240}
-  - component: {fileID: 877122242}
-  - component: {fileID: 877122241}
+  - component: {fileID: 1038781012}
   m_Layer: 0
-  m_Name: EntrarNaCasa
-  m_TagString: Player
+  m_Name: GameStateManager
+  m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
   m_IsActive: 1
---- !u!4 &877122240
+--- !u!4 &1038781012
 Transform:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 877122239}
+  m_GameObject: {fileID: 1038781011}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: -17.21, y: 3.35, z: -0.000667677}
+  m_LocalPosition: {x: -6.8362, y: 1.7069854, z: -19.77794}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!61 &877122241
-BoxCollider2D:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 877122239}
-  m_Enabled: 1
-  m_Density: 1
-  m_Material: {fileID: 0}
-  m_IncludeLayers:
-    serializedVersion: 2
-    m_Bits: 0
-  m_ExcludeLayers:
-    serializedVersion: 2
-    m_Bits: 0
-  m_LayerOverridePriority: 0
-  m_ForceSendLayers:
-    serializedVersion: 2
-    m_Bits: 4294967295
-  m_ForceReceiveLayers:
-    serializedVersion: 2
-    m_Bits: 4294967295
-  m_ContactCaptureLayers:
-    serializedVersion: 2
-    m_Bits: 4294967295
-  m_CallbackLayers:
-    serializedVersion: 2
-    m_Bits: 4294967295
-  m_IsTrigger: 1
-  m_UsedByEffector: 0
-  m_UsedByComposite: 0
-  m_Offset: {x: 9.7056875, y: -1.0276825}
-  m_SpriteTilingProperty:
-    border: {x: 0, y: 0, z: 0, w: 0}
-    pivot: {x: 0, y: 0}
-    oldSize: {x: 0, y: 0}
-    newSize: {x: 0, y: 0}
-    adaptiveTilingThreshold: 0
-    drawMode: 0
-    adaptiveTiling: 0
-  m_AutoTiling: 0
-  serializedVersion: 2
-  m_Size: {x: 0.72065926, y: 0.6017871}
-  m_EdgeRadius: 0
---- !u!114 &877122242
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 877122239}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 37ac92219e7807a4b8079633efe68388, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
 --- !u!1 &1295280679
 GameObject:
   m_ObjectHideFlags: 0
@@ -2862,7 +2805,7 @@ Camera:
   far clip plane: 1000
   field of view: 60
   orthographic: 1
-  orthographic size: 11.179659
+  orthographic size: 5.2295756
   m_Depth: -1
   m_CullingMask:
     serializedVersion: 2
@@ -2887,7 +2830,7 @@ Transform:
   m_GameObject: {fileID: 1443672412}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: -0.92, y: 2.08, z: -10}
+  m_LocalPosition: {x: -7.53, y: 2.02, z: -10}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -2905,7 +2848,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: dd85f389042c7c84f8979575b4449cd2, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  player: {fileID: 43838597}
+  player: {fileID: 0}
   velocidadeCamera: 5
 --- !u!1 &1452283947
 GameObject:
@@ -3488,17 +3431,17 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 8fbc3a21ece1bc340ad45f931738a9f1, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  velocidade: 3
-  distanciaDeteccao: 8
-  distanciaAtaque: 1.5
-  danoAtaque: 10
+  velocidade: 1
+  distanciaDeteccao: 3
+  distanciaAtaque: 1
+  danoAtaque: 5
   tempoEntreAtaques: 1.5
   duracaoAtaque: 0.5
   vidaMaxima: 30
-  distanciaMaximaDoNinho: 12
+  distanciaMaximaDoNinho: 3
   velocidadeVolta: 2
   velocidadePatrulha: 2
-  raioPatrulhaAleatoria: 6
+  raioPatrulhaAleatoria: 5
   tempoEsperaNosPontos: 2
   tempoNoNinho: 3
   distanciaParaAlcancarPonto: 0.3
@@ -9554,7 +9497,7 @@ SceneRoots:
   - {fileID: 1443672415}
   - {fileID: 1757061057}
   - {fileID: 43838597}
-  - {fileID: 877122240}
   - {fileID: 1452283950}
   - {fileID: 1725773432}
   - {fileID: 350826735}
+  - {fileID: 1038781012}
